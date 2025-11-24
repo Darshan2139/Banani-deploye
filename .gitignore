@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.corepack
+.pnpm-store
 
 # Editor directories and files
 .vscode/*
