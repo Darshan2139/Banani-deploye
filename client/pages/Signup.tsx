@@ -1,0 +1,311 @@
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/utils/supabaseClient";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import {
+  Mail,
+  Lock,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Globe,
+  ArrowLeft,
+  Banana,
+  User,
+} from "lucide-react";
+import { sendEmail } from "@/utils/emailClient";
+
+export default function Signup() {
+  const navigate = useNavigate();
+  const { language, setLanguage } = useLanguage();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState(language);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    // Check if already logged in
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        navigate("/dashboard");
+      }
+    };
+    checkUser();
+  }, [navigate]);
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Please enter your first and last name");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const {
+        data: { user },
+        error: signUpError,
+      } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (user) {
+        await setLanguage(selectedLanguage);
+
+        const { error: profileError } = await supabase
+          .from("user_profiles")
+          .insert({
+            user_id: user.id,
+            first_name: firstName,
+            last_name: lastName,
+            language: selectedLanguage,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (profileError && profileError.code !== "PGRST116") {
+          console.warn("Failed to save profile:", profileError);
+        }
+
+        // Send welcome email
+        await sendEmail("signup", email, firstName);
+      }
+
+      setSuccess("Account created! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || "Failed to sign up");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 flex items-center justify-center px-3 sm:px-4 py-4 sm:py-6 relative">
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 flex items-center gap-2 text-gray-700 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/80"
+        title="Back to home"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="hidden sm:inline text-sm font-medium">Back</span>
+      </button>
+
+      <Card className="w-full max-w-md shadow-2xl border-0 relative">
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-green-600 to-green-700 rounded-t-xl"></div>
+        <div className="p-6 sm:p-8 pt-8 sm:pt-8">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="bg-gradient-to-br from-green-600 to-green-700 p-2 rounded-lg animate-leaf-sway">
+              <Banana className="w-6 h-6 text-yellow-300" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-green-900">
+              BananiExpense
+            </h1>
+          </div>
+          <p className="text-green-700 text-center text-sm sm:text-base mb-6">
+            Create your account to get started
+          </p>
+
+          {error && (
+            <div className="mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm text-green-700">{success}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="firstName"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-2"
+                >
+                  First Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="pl-10 text-sm h-10 sm:h-11"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="lastName"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-2"
+                >
+                  Last Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="pl-10 text-sm h-10 sm:h-11"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-xs sm:text-sm font-medium text-gray-700 mb-2"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 text-sm h-10 sm:h-11"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-xs sm:text-sm font-medium text-gray-700 mb-2"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 text-sm h-10 sm:h-11"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-xs sm:text-sm font-medium text-gray-700 mb-2"
+              >
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-10 text-sm h-10 sm:h-11"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="language"
+                className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 flex items-center gap-2"
+              >
+                <Globe className="w-4 h-4" />
+                Language Preference
+              </label>
+              <select
+                id="language"
+                value={selectedLanguage}
+                onChange={(e) =>
+                  setSelectedLanguage(e.target.value as "en" | "gu" | "hi")
+                }
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white"
+              >
+                <option value="en">English</option>
+                <option value="gu">ગુજરાતી (Gujarati)</option>
+                <option value="hi">हिंदी (Hindi)</option>
+              </select>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 sm:py-2 rounded-lg transition-all flex items-center justify-center gap-2 h-11 sm:h-10 text-base sm:text-sm shadow-lg hover:shadow-xl"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Sign Up"
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-gray-600 text-xs sm:text-sm mt-6">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="text-green-600 hover:text-green-700 font-semibold"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}
