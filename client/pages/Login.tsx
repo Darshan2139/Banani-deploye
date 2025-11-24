@@ -49,7 +49,7 @@ export default function Login() {
           .from("user_profiles")
           .select("first_name")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         const firstName = profile?.first_name || "User";
         const timestamp = new Date().toLocaleString("en-IN");

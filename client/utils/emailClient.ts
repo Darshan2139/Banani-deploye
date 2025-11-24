@@ -19,10 +19,19 @@ export async function sendEmail(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Email error:', error);
+      const raw = await response.text();
+      let errorPayload: any;
+      try {
+        errorPayload = JSON.parse(raw);
+      } catch {
+        errorPayload = { error: raw || 'Unknown server error' };
+      }
+
+      console.error('Email error:', errorPayload);
+      throw new Error(errorPayload.error || 'Email request failed');
     }
   } catch (error) {
     console.error('Failed to send email:', error);
+    throw error;
   }
 }

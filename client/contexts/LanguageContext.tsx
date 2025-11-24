@@ -36,7 +36,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         .from('user_profiles')
         .select('language')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profileError && profile) {
         setLanguageState((profile.language as Language) || 'en');

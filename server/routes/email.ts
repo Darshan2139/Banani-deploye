@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express';
-import { sendEmail } from '../services/emailService';
+import { isEmailConfigured, sendEmail } from '../services/emailService';
 import { createSignupTemplate, createPasswordResetTemplate, createLoginNotificationTemplate, createNewEntryTemplate, createMonthlyEarningsTemplate, createPaymentDueTemplate } from '../services/emailTemplates';
 
 export interface SendEmailRequest {
@@ -11,6 +11,12 @@ export interface SendEmailRequest {
 
 export const handleSendEmail: RequestHandler = async (req, res) => {
   try {
+    if (!isEmailConfigured()) {
+      return res.status(500).json({
+        error: 'Email service is not configured. Please set SMTP_* environment variables in the deployment.',
+      });
+    }
+
     const { type, to, firstName, ...data } = req.body as SendEmailRequest;
 
     let emailTemplate;
@@ -62,6 +68,7 @@ export const handleSendEmail: RequestHandler = async (req, res) => {
     res.json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('Email endpoint error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
+    const message = error instanceof Error ? error.message : 'Failed to send email';
+    res.status(500).json({ error: message });
   }
 };

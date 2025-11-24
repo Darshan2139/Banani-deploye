@@ -291,7 +291,7 @@ export default function BananaCalculator() {
           .from("user_profiles")
           .select("first_name")
           .eq("user_id", userId)
-          .single();
+          .maybeSingle();
 
         const userEmail = currentUser?.email || "";
         const firstName = profile?.first_name || "User";
